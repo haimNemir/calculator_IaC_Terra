@@ -18,4 +18,8 @@ variable "azs" {
   description = "List of availability zones to use"
 }
 
- 
+variable "eks_cluster_name" {
+  type        = string
+  description = "Optional: EKS cluster name for subnet tagging"
+  default     = null
+}

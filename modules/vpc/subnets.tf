@@ -5,8 +5,14 @@ resource "aws_subnet" "public" {
   availability_zone       = var.azs[count.index]
   map_public_ip_on_launch = true # This setting ensures that instances launched in this subnet will automatically receive a public IP address, which is necessary for them to be accessible from the internet.
 
-  tags = {
-    Name = "${var.name}-public-${count.index + 1}" # the result of t
-  }
+  tags = merge(
+    {
+      Name = "${var.name}-public-${count.index + 1}"
+    },
+    var.eks_cluster_name == null ? {} : {
+      "kubernetes.io/cluster/${var.eks_cluster_name}" = "shared"
+      "kubernetes.io/role/elb"                        = "1"
+    }
+  )
 }
- 
+
