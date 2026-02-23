@@ -40,5 +40,38 @@ variable "node_max_size" {
 variable "kubernetes_version" {
   type        = string
   description = "EKS Kubernetes version"
-  default     = "1.29"
+  default     = "1.33"
+}
+
+variable "endpoint_public_access" {
+  type        = bool
+  description = "Enable public access to the EKS API endpoint"
+  default     = true
+}
+
+variable "endpoint_private_access" {
+  type        = bool
+  description = "Enable private access to the EKS API endpoint"
+  default     = true
+}
+
+variable "public_access_cidrs" {
+  type        = list(string)
+  description = "Allowed CIDRs for the public EKS API endpoint"
+  default     = ["0.0.0.0/0"]
+}
+
+variable "admin_principal_arn" {
+  type        = string
+  description = "IAM principal ARN to grant EKS Cluster Admin access"
+}
+
+variable "environment" {
+  type        = string
+  description = "Environment name (dev/stage/prod)"
+}
+
+variable "project_name" {
+  type        = string
+  description = "Current project name for tags in AWS"
 }

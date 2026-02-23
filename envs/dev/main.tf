@@ -12,6 +12,7 @@ terraform {
 provider "aws" {
   region = "us-east-1"
 }
+
 module "vpc" {
   source = "../../modules/vpc"
 
@@ -30,7 +31,9 @@ module "ecr" {
     "backend",
     "frontend",
   ]
+  delete_repo_when_full = true
 }
+
 module "github_oidc" {
   source = "../../modules/iam_github_oidc"
 
@@ -53,4 +56,14 @@ module "eks" {
   node_min_size       = 1
   node_desired_size   = 1
   node_max_size       = 2
+
+  endpoint_public_access  = true
+  endpoint_private_access = true
+  public_access_cidrs     = ["0.0.0.0/0"]
+
+  admin_principal_arn = "arn:aws:iam::757630643687:user/localadmin"
+
+  environment = "dev" 
+  project_name = "calculator" 
+
 }
