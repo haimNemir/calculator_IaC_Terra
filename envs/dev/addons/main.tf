@@ -1,4 +1,5 @@
-data "terraform_remote_state" "foundation" {
+# You will find explenation inside the README file in the same directory.
+data "terraform_remote_state" "foundation" { 
   backend = "s3"
 
   config = {
