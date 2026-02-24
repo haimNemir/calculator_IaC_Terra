@@ -67,3 +67,5 @@ module "eks" {
   project_name = "calculator" 
 
 }
+
+data "aws_region" "current" {}
