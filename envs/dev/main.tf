@@ -4,7 +4,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.0"
+      version = "~> 6.0"
     }
   }
 }
@@ -63,8 +63,8 @@ module "eks" {
 
   admin_principal_arn = "arn:aws:iam::757630643687:user/localadmin"
 
-  environment = "dev" 
-  project_name = "calculator" 
+  environment  = "dev"
+  project_name = "calculator"
 
 }
 
