@@ -34,6 +34,6 @@ resource "helm_release" "aws_load_balancer_controller" {
   ]
   depends_on = [ # Make sure that the ALB controller is deployed only after the IAM Role and the Service Account are created, because the ALB controller needs the IAM Role to work, and the Service Account to be able to assume this role.
     aws_iam_role_policy_attachment.alb_controller,
-    kubernetes_service_account.alb_controller
+    kubernetes_service_account_v1.alb_controller
   ]
 }

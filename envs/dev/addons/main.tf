@@ -51,15 +51,6 @@ provider "kubernetes" {                                                         
   token                  = data.aws_eks_cluster_auth.this.token                                    # We are using the token that we got from AWS above (data "aws_eks_cluster_auth" "this") to access to the cluster.
 }
 
-
-# provider "helm" {
-#   kubernetes {
-#     host                   = data.terraform_remote_state.foundation.outputs.eks_cluster_endpoint
-#     cluster_ca_certificate = base64decode(data.terraform_remote_state.foundation.outputs.cluster_ca)
-#     token                  = data.aws_eks_cluster_auth.this.token 
-#   }
-# }
-#TODO: Check that the block below is the correct one from the one above.
 # With this Helm provider we are defining on the cluster of kubernetes some charts, and to do that we need to get access to the cluster, and that's is what we are doing here - we provide the certificate of access to the cluster to the helm provider, as we did with the kubernetes provider above.
 provider "helm" {
   kubernetes = {
