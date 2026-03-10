@@ -5,7 +5,7 @@ module "eks" {
   name               = var.cluster_name
   kubernetes_version = var.kubernetes_version
 
-  addons = var.addons
+  addons = var.addons # Here we add addons to our cluster, what we defined in env/.../main/module "eks".
 
   vpc_id     = var.vpc_id     # Here we define in witch VPC this EKS will be deployed
   subnet_ids = var.subnet_ids # A list of subnets this cluster will use.
