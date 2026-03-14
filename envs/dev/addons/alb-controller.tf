@@ -8,17 +8,17 @@ resource "helm_release" "aws_load_balancer_controller" {
   set = [ # Define the values that we want to set for the ALB controller Helm chart, and we will use these values to configure the ALB controller to work with our EKS cluster and with the IRSA that we created for it.
     {
       name  = "clusterName"
-      value = data.terraform_remote_state.foundation.outputs.eks_cluster_name
+      value = data.aws_eks_cluster.this.name
     },
 
     {
       name  = "region"
-      value = data.terraform_remote_state.foundation.outputs.region
+      value = local.aws_region
     },
 
     {
       name  = "vpcId"
-      value = data.terraform_remote_state.foundation.outputs.vpc_id
+      value = data.aws_eks_cluster.this.vpc_config[0].vpc_id # vpc_config list - contains only one object, so we can access it with [0], inside this object we have: vpc_id, subnets_ids[...], security_group_ids[...], and so we access the vpc_id to tell the ALB controller in which VPC it should create the load balancers. 
     },
 
     # We pre-create the service account with IRSA, so we tell Helm- do not create the service account.
