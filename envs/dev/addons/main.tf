@@ -1,16 +1,8 @@
 # You will find explenation inside the README file in the same directory.
 
-# Here we are fetching the foundation state file (envs/dev/backend), which is stored in S3, but we can later fetch only the outputs from the state file. We will use these outputs to configure our providers and to deploy our addons on the EKS cluster that was created in the foundation layer.
-data "terraform_remote_state" "foundation" {
-  backend = "s3"
-
-  config = {
-    bucket         = "calculator-tfstate-haim-nemir"
-    key            = "dev/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "calculator-terraform-locks"
-    encrypt        = true
-  }
+locals {
+  aws_region   = "us-east-1"
+  cluster_name = "calculator-dev"
 }
 
 terraform {
@@ -35,27 +27,36 @@ terraform {
   }
 }
 
-# To understand what we are doing here, you need to understand that even though we (local Terraform) have permissions to access AWS API and create resources such as EKS cluster, still we need to get a token that holds the credentials to get access to the cluster himself. And that's what we are doing here, we ask from AWS to give us a token that we can use to access the cluster, and we are using the outputs from the foundation state file to get the cluster name, which is required to get the token.
-data "aws_eks_cluster_auth" "this" {                                     # Here we are getting token to access the cluster.
-  name = data.terraform_remote_state.foundation.outputs.eks_cluster_name # The cluster name that we create in the foundation layer - its nessecary to get token with the name of the cluster we want to access.
+# We read the live cluster directly from AWS instead of depending on foundation outputs in remote state. To get the our cluster information, we need explicitly tells how our cluster is called (name = ...) .
+data "aws_eks_cluster" "this" {
+  name = local.cluster_name
+}
+
+# To understand what we are doing here, you need to understand that even though we (local Terraform) have permissions to access AWS API and create resources such as EKS cluster, still we need to get a token that holds the credentials to get access to the cluster himself. And that's what we are doing here, we ask from AWS to give us a token that we can use to access the cluster, and we are using the cluster name, which is required to get the token.
+data "aws_eks_cluster_auth" "this" { # Here we are getting token to access the cluster.
+  name = data.aws_eks_cluster.this.name
+}
+
+# Here we are getting the current caller identity that we are using to access AWS API. When we say "caller identity" we mean the identity that right now talks to AWS API, and its not terraform istelf that talks to AWS API, but the identity that terraform uses to talk to AWS API.
+data "aws_caller_identity" "current" {
 }
 
 provider "aws" {
-  region = data.terraform_remote_state.foundation.outputs.region
+  region = local.aws_region
 }
 
 # Here we are defining the kubernetes provider, which is required to access the cluster and deploy resources on it. We need him in addition to the AWS provider, because AWS provider is only for creating resources on AWS.  
-provider "kubernetes" {                                                                            # Here we define how to access from our local kubernetes provider to the API Server of the cluster.
-  host                   = data.terraform_remote_state.foundation.outputs.eks_cluster_endpoint     # Here we define the host of the API Server of the cluster, which is required to access to the correct cluster.
-  cluster_ca_certificate = base64decode(data.terraform_remote_state.foundation.outputs.cluster_ca) # CA is a certificate authority that proves the identity of the cluster, without it we can't be sure that the target we are trying to access is the correct target, it's always can be "Man in the middle" attack. And with this CA we can be sure that we are accessing the correct target (the cluster), and not some fake cluster that someone created to steal our credentials. We need to decode it because it's encoded in base64 format, and we need to decode it to get the actual certificate.
-  token                  = data.aws_eks_cluster_auth.this.token                                    # We are using the token that we got from AWS above (data "aws_eks_cluster_auth" "this") to access to the cluster.
+provider "kubernetes" {                                                                          # Here we define how to access from our local kubernetes provider to the API Server of the cluster.
+  host                   = data.aws_eks_cluster.this.endpoint                                    # Here we define the host of the API Server of the cluster, which is required to access to the correct cluster.
+  cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data) # CA is a certificate authority that proves the identity of the cluster, without it we can't be sure that the target we are trying to access is the correct target, it's always can be "Man in the middle" attack. And with this CA we can be sure that we are accessing the correct target (the cluster), and not some fake cluster that someone created to steal our credentials. We need to decode it because it's encoded in base64 format, and we need to decode it to get the actual certificate.
+  token                  = data.aws_eks_cluster_auth.this.token                                  # We are using the token that we got from AWS above (data "aws_eks_cluster_auth" "this") to access to the cluster.
 }
 
 # With this Helm provider we are defining on the cluster of kubernetes some charts, and to do that we need to get access to the cluster, and that's is what we are doing here - we provide the certificate of access to the cluster to the helm provider, as we did with the kubernetes provider above.
 provider "helm" {
   kubernetes = {
-    host                   = data.terraform_remote_state.foundation.outputs.eks_cluster_endpoint
-    cluster_ca_certificate = base64decode(data.terraform_remote_state.foundation.outputs.cluster_ca)
+    host                   = data.aws_eks_cluster.this.endpoint
+    cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
     token                  = data.aws_eks_cluster_auth.this.token # We are using the token that we got from AWS above (data "aws_eks_cluster_auth" "this") to access to the cluster
   }
 }

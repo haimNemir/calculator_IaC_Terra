@@ -53,3 +53,34 @@ This "ServiceLinkedRole" is role in IAM that allows AWS Services (Here is the AL
 This role can create only for one AWS Service.
 In our case the service that got this role is the ALB and he need it to makes changes in the cluster.
 
+
+B: ArgoCD.
+ArgoCD is installed in the `argocd` namespace by Helm and stays internal in `dev`.
+For the current project stage we keep the ArgoCD server as `ClusterIP` and access it with `kubectl port-forward`, because the Final Project requires documented access but does not require a public ALB in front of ArgoCD.
+
+Terraform files:
+- `argocd.tf`
+- `argocd-values.yaml`
+
+Quick access flow:
+1. Apply the addons layer:
+   `cd envs/dev/addons && terraform init -reconfigure && terraform plan -out tfplan && terraform apply tfplan`
+2. Verify pods:
+   `kubectl -n argocd get pods`
+3. Get the initial admin password:
+   `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d && echo`
+4. Start local access:
+   `kubectl -n argocd port-forward svc/argocd-server 8080:443`
+5. Open:
+   `https://localhost:8080`
+6. Login:
+   username `admin`
+   password from step 3
+
+Optional CLI login:
+`argocd login localhost:8080 --username admin --password <PASSWORD> --insecure`
+
+Current scope note:
+ArgoCD installation and access are implemented here.
+The ArgoCD `Application` sync to `calculator_desire_state` is implemented in the separate `envs/dev/argocd-apps` layer, after the required CRDs are installed here.
+

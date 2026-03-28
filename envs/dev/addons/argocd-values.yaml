@@ -1,0 +1,26 @@
+crds: # CRD = Custom Resource Definition. This is a Kubernetes concept that we install and this allows you to define your own custom resources, such as ArgoCD application that we are going to use.
+  install: true
+
+server:
+  service:  
+    type: ClusterIP
+  ingress:
+    enabled: false
+
+# README:
+# To understand what is the service "ClusterIP" here - we need to understand how ArgoCD runs.
+# ArgoCD runs as a server inside a pod in your Kubernetes cluster. This server is responsible 
+# for the UI, API (for getting commands), and ArgoCD CLI.
+# Now the problem is that if we want to access the ArgoCD UI, we need to expose this server and its impossible 
+# when the pod is constantly change his IP and name. So we need to create a service that will expose this server
+# and give it a stable IP and name. And here we choose to create a ClusterIP service, and it will give us a
+# stable IP and DNS name that we can use only from inside the cluster.
+# 
+# Now, if we want to access the ArgoCD UI or API from outside the cluster, for example if we want to ask from 
+# ArgoCD CLI to sync the application with the git repository, we need to expose this service IP/DNS to our 
+# local machine. And here we have two options:
+# 1. Port forwarding: (what we doing here in dev envs) we can use kubectl port-forward command to connect our local machine(8080) to the 
+# ArgoCD service(443), so we can access the ArgoCD UI from http://localhost:8080.
+# 2. Ingress: if we will use ingress, we also use the same ClusterIP service. Here we do not use it because 
+# we build only dev environment and for this envs we do not need ingess to access.
+
