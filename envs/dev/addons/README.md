@@ -82,5 +82,5 @@ Optional CLI login:
 
 Current scope note:
 ArgoCD installation and access are implemented here.
-The Application sync to `calculator_desire_state` should be added only after that repo is aligned with the current Source of Truth (`dev/stage/prod`, ALB-based ingress, and cloud DB direction).
+The ArgoCD `Application` sync to `calculator_desire_state` is implemented in the separate `envs/dev/argocd-apps` layer, after the required CRDs are installed here.
 

@@ -1,0 +1,1 @@
+# Here we define another terraform backend for the argocd-apps module. We did saparate it from the addons module because its dependent on the addons module - there we installing CRDs that allows us to use menifest from type of Application. 

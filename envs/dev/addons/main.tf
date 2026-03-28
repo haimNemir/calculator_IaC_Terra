@@ -29,7 +29,7 @@ terraform {
 
 # We read the live cluster directly from AWS instead of depending on foundation outputs in remote state. To get the our cluster information, we need explicitly tells how our cluster is called (name = ...) .
 data "aws_eks_cluster" "this" {
-  name = local.cluster_name 
+  name = local.cluster_name
 }
 
 # To understand what we are doing here, you need to understand that even though we (local Terraform) have permissions to access AWS API and create resources such as EKS cluster, still we need to get a token that holds the credentials to get access to the cluster himself. And that's what we are doing here, we ask from AWS to give us a token that we can use to access the cluster, and we are using the cluster name, which is required to get the token.
