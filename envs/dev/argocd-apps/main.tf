@@ -58,7 +58,10 @@ resource "kubernetes_manifest" "calculator_dev_application" { #
         targetRevision = local.calculator_target_branch  # Here we specify the branch of the repository that ArgoCD should monitor for changes and accordingly update the application, here we set it to "main", because changes in others branches are not relevant for our application.
         path           = "charts/calculator" # Here we define the path within the repository where our Helm chart is located. This allows ArgoCD to find the necessary files to deploy our application.
         helm = {
-          valueFiles = ["../../environments/values-dev.yaml"] 
+          valueFiles = [
+            "../../environments/values-dev.yaml",
+            "../../environments/values-dev-images.yaml",
+          ]
         }
       }
       destination = { # Tell ArgoCD where to deploy the application "calculator" itself, 

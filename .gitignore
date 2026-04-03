@@ -13,3 +13,4 @@ terraform.rc
 tfplan
 *.tfplan
 .vscode/
+.codex
