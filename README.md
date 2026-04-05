@@ -27,7 +27,7 @@ What it does:
 - applies `envs/dev/addons`
 - applies `envs/dev/argocd-apps`
 - refreshes kubeconfig
-- starts ArgoCD port-forward on `https://localhost:8080`
+- starts a self-restarting ArgoCD port-forward supervisor on `https://localhost:8080`
 - waits for the ArgoCD app to become `Synced` and `Healthy`
 - opens Brave with both ArgoCD and the public calculator URL
 - sends a completion summary email through SNS
@@ -86,8 +86,11 @@ If the foundation destroy was interrupted and you need to finish it manually whi
    username `admin`
    password from the secret above
 
+If you use `scripts/apply-dev.sh`, it now starts a background supervisor that restarts `kubectl port-forward` automatically if the connection drops. Manual `kubectl port-forward` is still fine for short sessions, but it is not intended to be a permanent access method.
+
 ## Notes
 
 - ArgoCD is intentionally internal in `dev`; it is not exposed by ALB at this stage.
+- For always-on browser access, the proper long-term solution is to publish ArgoCD through a supported ingress or load balancer path instead of relying on `kubectl port-forward`.
 - GitOps application sync now happens through the separate `envs/dev/argocd-apps` layer.
 - The public calculator app is exposed through the ALB created from the Ingress managed in `calculator_desire_state`.

@@ -57,6 +57,7 @@ In our case the service that got this role is the ALB and he need it to makes ch
 B: ArgoCD.
 ArgoCD is installed in the `argocd` namespace by Helm and stays internal in `dev`.
 For the current project stage we keep the ArgoCD server as `ClusterIP` and access it with `kubectl port-forward`, because the Final Project requires documented access but does not require a public ALB in front of ArgoCD.
+The bring-up script now wraps that port-forward in a small background supervisor, because a single `kubectl port-forward` process can exit after pod restarts, API-server disconnects, or local machine sleep/resume.
 
 Terraform files:
 - `argocd.tf`
@@ -83,4 +84,5 @@ Optional CLI login:
 Current scope note:
 ArgoCD installation and access are implemented here.
 The ArgoCD `Application` sync to `calculator_desire_state` is implemented in the separate `envs/dev/argocd-apps` layer, after the required CRDs are installed here.
+For a proper always-on access path later, prefer exposing ArgoCD through an ingress or load balancer rather than depending on `kubectl port-forward`.
 

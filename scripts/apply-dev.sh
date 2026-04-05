@@ -16,6 +16,7 @@ PORT_FORWARD_PORT="8080"
 SKIP_PORT_FORWARD="false"
 LOG_FILE="/tmp/calculator-dev-apply-$(date +%Y%m%d-%H%M%S).log"
 PORT_FORWARD_LOG="/tmp/calculator-argocd-port-forward.log"
+PORT_FORWARD_PID_FILE="/tmp/calculator-argocd-port-forward.pid"
 NOTIFY_EMAIL="chimnem@gmail.com"
 SNS_TOPIC_NAME="${CLUSTER_NAME}-apply-notify"
 TOPIC_ARN=""
@@ -157,29 +158,88 @@ get_argocd_app_sync() {
   kubectl -n "$ARGOCD_NAMESPACE" get application "$ARGOCD_APP_NAME" -o jsonpath='{.status.sync.status}' 2>>"$LOG_FILE" || true
 }
 
+is_tcp_port_listening() {
+  local port="$1"
+
+  if command -v ss >/dev/null 2>&1; then
+    ss -ltn "( sport = :${port} )" | grep -q ":${port}"
+    return $?
+  fi
+
+  if command -v netstat >/dev/null 2>&1; then
+    netstat -ltn 2>/dev/null | awk '{print $4}' | grep -Eq "[:.]${port}$"
+    return $?
+  fi
+
+  return 1
+}
+
+stop_stale_port_forward_supervisor() {
+  if [[ ! -f "$PORT_FORWARD_PID_FILE" ]]; then
+    return 0
+  fi
+
+  local existing_pid=""
+  existing_pid="$(cat "$PORT_FORWARD_PID_FILE" 2>/dev/null || true)"
+
+  if [[ -n "$existing_pid" ]] && kill -0 "$existing_pid" >/dev/null 2>&1; then
+    log "RUN: Stop stale ArgoCD port-forward supervisor PID ${existing_pid}"
+    kill "$existing_pid" >>"$LOG_FILE" 2>&1 || true
+    sleep 1
+  fi
+
+  rm -f "$PORT_FORWARD_PID_FILE"
+}
+
 start_port_forward() {
   if [[ "$SKIP_PORT_FORWARD" == "true" ]]; then
     record_summary "OK: Skipped ArgoCD port-forward by request"
     return 0
   fi
 
-  if command -v ss >/dev/null 2>&1 && ss -ltn "( sport = :${PORT_FORWARD_PORT} )" | grep -q ":${PORT_FORWARD_PORT}"; then
+  if is_tcp_port_listening "$PORT_FORWARD_PORT"; then
     record_summary "WARN: Local port ${PORT_FORWARD_PORT} is already in use; skipping port-forward"
     return 0
   fi
 
-  log "RUN: Start ArgoCD port-forward on localhost:${PORT_FORWARD_PORT}"
-  nohup kubectl -n "$ARGOCD_NAMESPACE" port-forward svc/argocd-server "${PORT_FORWARD_PORT}:443" >"$PORT_FORWARD_LOG" 2>&1 &
+  stop_stale_port_forward_supervisor
+  touch "$PORT_FORWARD_LOG"
+
+  log "RUN: Start ArgoCD port-forward supervisor on localhost:${PORT_FORWARD_PORT}"
+  nohup env \
+    ARGOCD_NAMESPACE="$ARGOCD_NAMESPACE" \
+    PORT_FORWARD_PORT="$PORT_FORWARD_PORT" \
+    PORT_FORWARD_LOG="$PORT_FORWARD_LOG" \
+    bash -c '
+      while true; do
+        printf "[%s] Starting kubectl port-forward on localhost:%s\n" "$(date +"%Y-%m-%d %H:%M:%S")" "$PORT_FORWARD_PORT" >>"$PORT_FORWARD_LOG"
+        kubectl -n "$ARGOCD_NAMESPACE" port-forward svc/argocd-server "${PORT_FORWARD_PORT}:443" >>"$PORT_FORWARD_LOG" 2>&1
+        rc=$?
+        printf "[%s] kubectl port-forward exited with code %s; restarting in 2 seconds\n" "$(date +"%Y-%m-%d %H:%M:%S")" "$rc" >>"$PORT_FORWARD_LOG"
+        sleep 2
+      done
+    ' >/dev/null 2>&1 &
   local pf_pid=$!
-  sleep 3
+  printf '%s\n' "$pf_pid" >"$PORT_FORWARD_PID_FILE"
 
-  if kill -0 "$pf_pid" >/dev/null 2>&1; then
-    record_summary "OK: ArgoCD port-forward started on https://localhost:${PORT_FORWARD_PORT}"
-    record_summary "OK: Port-forward PID ${pf_pid}; log file ${PORT_FORWARD_LOG}"
-    return 0
-  fi
+  for _ in $(seq 1 15); do
+    if is_tcp_port_listening "$PORT_FORWARD_PORT"; then
+      record_summary "OK: ArgoCD port-forward supervisor started on https://localhost:${PORT_FORWARD_PORT}"
+      record_summary "OK: Supervisor PID ${pf_pid}; log file ${PORT_FORWARD_LOG}"
+      return 0
+    fi
 
-  record_summary "ERROR: ArgoCD port-forward failed to start; see ${PORT_FORWARD_LOG}"
+    if ! kill -0 "$pf_pid" >/dev/null 2>&1; then
+      break
+    fi
+
+    sleep 2
+  done
+
+  kill "$pf_pid" >>"$LOG_FILE" 2>&1 || true
+  rm -f "$PORT_FORWARD_PID_FILE"
+
+  record_summary "ERROR: ArgoCD port-forward did not become ready; see ${PORT_FORWARD_LOG}"
   return 1
 }
 
