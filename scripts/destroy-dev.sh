@@ -61,6 +61,10 @@ mark_failed() {
   record_summary "FAILED: $1"
 }
 
+mark_soft_failed() {
+  record_summary "WARN: $1"
+}
+
 require_command() {
   local cmd="$1"
   if ! command -v "$cmd" >/dev/null 2>&1; then
@@ -968,14 +972,14 @@ main() {
       argocd_apps_fallback_cleanup
 
       if ! terraform_destroy "$ARGOCD_APPS_DIR" "envs/dev/argocd-apps after fallback"; then
-        mark_failed "ArgoCD apps destroy still failed after fallback cleanup"
+        mark_soft_failed "ArgoCD apps destroy still failed after fallback cleanup"
       fi
     fi
   else
     record_summary "OK: ArgoCD apps Terraform state is already empty"
   fi
 
-  verify_argocd_apps_destroyed || mark_failed "Final verification found remaining ArgoCD app resources"
+  verify_argocd_apps_destroyed || mark_soft_failed "Final verification found remaining ArgoCD app resources"
 
   if terraform_state_has_entries "$ADDONS_DIR"; then
     if ! terraform_destroy "$ADDONS_DIR" "envs/dev/addons"; then
@@ -983,14 +987,14 @@ main() {
       addons_fallback_cleanup
 
       if ! terraform_destroy "$ADDONS_DIR" "envs/dev/addons after fallback"; then
-        mark_failed "Addons destroy still failed after fallback cleanup"
+        mark_soft_failed "Addons destroy still failed after fallback cleanup"
       fi
     fi
   else
     record_summary "OK: Addons Terraform state is already empty"
   fi
 
-  verify_addons_destroyed || mark_failed "Final verification found remaining addons resources"
+  verify_addons_destroyed || mark_soft_failed "Final verification found remaining addons resources"
   sweep_costly_aws_leftovers
 
   if ! terraform_destroy_foundation_preserve_ecr "$FOUNDATION_DIR" "envs/dev"; then

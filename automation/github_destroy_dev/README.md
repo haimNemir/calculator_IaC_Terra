@@ -102,11 +102,19 @@ What we already completed:
 - the isolated Terraform stack was applied in AWS
 - the role `calculator-github-actions-destroy-dev` now exists in AWS
 - the role currently has `AdministratorAccess` attached as planned
+- we ran the first end-to-end remote destroy from GitHub Actions
+- that first run proved that the workflow, OIDC role assumption, kubeconfig
+  refresh, and remote execution path all work
+- that first run also showed a reporting problem in `scripts/destroy-dev.sh`:
+  the script marked the run as failed when `argocd-apps` or `addons` left state
+  remnants, even though the cost-bearing AWS infrastructure was successfully
+  destroyed and the EKS cluster was removed
+- based on that result, we decided to keep the destroy behavior itself and
+  change only the result classification: `argocd-apps` and `addons` verification
+  issues are now treated as warnings instead of hard failures
 
 What is intentionally not done yet:
 
-- there is no committed end-to-end CI path yet that starts from
-  `workflow_dispatch` and finishes with a full remote destroy.
 - the workflow and this automation folder are still local changes until they are
   committed, pushed, and merged to `main`
 
@@ -121,8 +129,10 @@ The plan from here is:
 3. Commit and push the workflow plus this automation folder to GitHub.
 4. Merge those changes into `main`, because both the workflow and the IAM trust
    policy are intended to work from `main`.
-5. Test the workflow end to end from GitHub after the IAM role exists.
-6. Later decide whether to keep `AdministratorAccess` or replace it with a
+5. Re-run the remote destroy workflow after the warning-classification fix.
+6. If the run now reports success when the cluster is truly removed, keep this
+   classification model.
+7. Later decide whether to keep `AdministratorAccess` or replace it with a
    narrower policy.
 
 ## How To Apply This Stack
@@ -166,7 +176,8 @@ The remaining implementation work is mainly:
   `calculator-github-actions-destroy-dev` from GitHub
 - keep the workflow on top of `scripts/destroy-dev.sh` instead of duplicating
   destroy logic in YAML
-- test the workflow from GitHub end to end
+- verify that the new warning-classification behavior reports success when the
+  cluster and cost-bearing AWS resources are actually gone
 - decide whether to keep `AdministratorAccess` for the role temporarily or
   replace it later with a narrower least-privilege policy
 
