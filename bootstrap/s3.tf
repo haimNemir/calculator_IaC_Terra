@@ -5,7 +5,7 @@ resource "aws_s3_bucket" "tfstate" {
 resource "aws_s3_bucket_versioning" "tfstate" {
   bucket = aws_s3_bucket.tfstate.id
   versioning_configuration {
-    status = "Enabled"
+    status = "Enabled" # Enable versioning to protect against accidental deletion or overwriting of state files.
   }
 }
 
