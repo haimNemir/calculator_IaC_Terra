@@ -386,6 +386,7 @@ main() {
 
   terraform_apply "$FOUNDATION_DIR" "foundation" || exit 1
   run_cmd "Refresh kubeconfig for ${CLUSTER_NAME}" aws eks update-kubeconfig --region "$AWS_REGION" --name "$CLUSTER_NAME" || exit 1
+  wait_for_resource "EKS nodes ready" 30 kubectl wait --for=condition=Ready nodes --all --timeout=30s || exit 1
   terraform_apply "$ADDONS_DIR" "addons" || exit 1
 
   wait_for_resource "ArgoCD Application CRD" 24 kubectl get crd applications.argoproj.io || exit 1
